@@ -15,9 +15,9 @@ import { formatDistance } from "date-fns";
 import jwt from "jsonwebtoken";
 import cookie from "../services/cookieService";
 import io from "socket.io-client";
+import ChatBox from "@components/ChatBox";
 const ENDPOINT = process.env.BASE_URL;
 const JWT_SECRET = process.env.JWT_SECRET;
-// const ENDPOINT = 'https://flamewars-master.herokuapp.com';
 
 export default function Homepage() {
   const socket = io(ENDPOINT);
@@ -25,7 +25,6 @@ export default function Homepage() {
   const [alertData, setAlertData] = useState("");
   const [showModal, setShowModal] = useState(true);
   const [switchModal, setSwitchModal] = useState(true);
-  const [field, setField] = useState("");
   const [localMessages, setLocalMessages] = useState([]);
   const [login, setLogin] = useState({
     username: "",
@@ -141,7 +140,6 @@ export default function Homepage() {
 
   let handleVotes = (vote) => {
     setVotes(vote);
-    setField("");
   };
 
   let handleMessage = (data) => {
@@ -178,49 +176,41 @@ export default function Homepage() {
         });
         break;
 
-      case "message":
-        setField(value);
-        break;
-
       default:
         break;
     }
   }
 
-  function handleChatSubmit(event) {
-    event.preventDefault();
+  function handleChatSubmit(message) {
     const { username } = login;
     const { color, bgColor } = users.find((user) => username === user.username);
     const data = {
       username,
       color,
       bgColor,
-      message: field,
+      message: message,
       date: new Date(),
     };
 
-    if (field.includes("/create")) {
-      socket.emit("create", { command: field, username });
-      setField("");
-    } else if (field.includes("/close")) {
+    if (message.includes("/create")) {
+      socket.emit("create", { command: message, username });
+    } else if (message.includes("/close")) {
       socket.emit("close", { username });
-      setField("");
-    } else if (field.includes("#")) {
+    } else if (message.includes("#")) {
       if (votes && votes.title) {
-        if (field.includes(votes.optionA) || field.includes(votes.optionB)) {
-          socket.emit("vote", { vote: field, username: username });
-          setField("");
+        if (
+          message.includes(votes.optionA) ||
+          message.includes(votes.optionB)
+        ) {
+          socket.emit("vote", { vote: message, username: username });
         } else {
           socket.emit("message", data);
-          setField("");
         }
       } else {
         socket.emit("message", data);
-        setField("");
       }
-    } else if (field) {
+    } else if (message) {
       socket.emit("message", data);
-      setField("");
     }
   }
 
@@ -530,25 +520,7 @@ export default function Homepage() {
               ))}
             </div>
           </div>
-
-          <Form onSubmit={handleChatSubmit}>
-            <div className="form-row">
-              <Form.Group controlId="message">
-                <Form.Control
-                  type="text"
-                  placeholder="Start typing here..."
-                  autoComplete="off"
-                  value={field}
-                  onChange={() => handleChange(event, "message")}
-                />
-              </Form.Group>
-
-              <Button variant="primary" type="submit">
-                Send
-              </Button>
-            </div>
-          </Form>
-
+          <ChatBox onSubmit={handleChatSubmit} />
           <Form.Text className="text-muted">
             To start a voting event, type the command{" "}
             <code>/create option1 option2</code>. To vote between any option,
